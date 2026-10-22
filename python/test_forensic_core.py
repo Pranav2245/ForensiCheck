@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pytest
 
 # Module under test
+# pyrefly: ignore[missing-import]
 from forensic_core import (
     calculate_sha256,
     calculate_sha256_from_bytes,
@@ -41,7 +42,6 @@ from forensic_core import (
     normalize_hash,
     run_validation,
     TestStatus,
-    ValidationResult,
 )
 
 
