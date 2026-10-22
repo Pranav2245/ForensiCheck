@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ForensiCheck — Hashing Tests</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg: #0a0e1a;
+            --card: #1a2235;
+            --border: #2a3a5c;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --green: #10b981;
+            --red: #ef4444;
+            --amber: #f59e0b;
+            --blue: #3b82f6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .summary-item {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .summary-item.pass { color: var(--green); }
+        .summary-item.fail { color: var(--red); }
+        .summary-item.total { color: var(--blue); }
+
+        .test-result {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .test-result .icon {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .test-result .name {
+            flex: 1;
+            font-size: 0.88rem;
+        }
+
+        .test-result .name strong {
+            color: var(--blue);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+        }
+
+        .test-result .time {
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .error-detail {
+            font-size: 0.78rem;
+            color: var(--red);
+            margin-top: 0.25rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--blue), #2563eb);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            font-family: inherit;
+        }
+
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .running {
+            color: var(--amber);
+            font-size: 0.88rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🧪 ForensiCheck — Hashing & Validation Tests</h1>
+<p class="subtitle">Automated browser tests for SHA-256 hashing logic using Web Crypto API.</p>
+
+<button class="btn" id="btnRun" onclick="runTests()">▶ Run All Tests</button>
+
+<div class="summary" id="summary" style="display:none;">
+    <span class="summary-item total" id="sumTotal"></span>
+    <span class="summary-item pass" id="sumPass"></span>
+    <span class="summary-item fail" id="sumFail"></span>
+</div>
+
+<div id="results"></div>
+
+<script>
+"use strict";
+
+const utf8Encoder = new TextEncoder();
+const VALID_HEX = /^[0-9a-f]{64}$/;
+
+// ---- SHA-256 (duplicate of script.js for standalone testing) ----
+async function calculateSHA256(data) {
+    const buffer = data instanceof ArrayBuffer ? data : data.buffer.slice(
+        data.byteOffset, data.byteOffset + data.byteLength
+    );
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const hashArray = new Uint8Array(hashBuffer);
+    return Array.from(hashArray).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function normalizeHash(hex) { return hex.trim().toLowerCase(); }
+function isValidSHA256Hex(hex) { return VALID_HEX.test(normalizeHash(hex)); }
+function compareHashes(a, b) { return normalizeHash(a) === normalizeHash(b) ? "PASS" : "FAIL"; }
+
+// ---- Test Framework ----
+let testsPassed = 0;
+let testsFailed = 0;
+const resultsDiv = document.getElementById("results");
+
+function renderResult(name, passed, timeMs, errorMsg) {
+    const div = document.createElement("div");
+    div.className = "test-result";
+    div.innerHTML = `
+        <span class="icon">${passed ? "✅" : "❌"}</span>
+        <div class="name">
+            ${name}
+            ${errorMsg ? `<div class="error-detail">${errorMsg}</div>` : ""}
+        </div>
+        <span class="time">${timeMs.toFixed(1)}ms</span>
+    `;
+    resultsDiv.appendChild(div);
+}
+
+async function test(name, fn) {
+    const start = performance.now();
+    try {
+        await fn();
+        testsPassed++;
+        renderResult(name, true, performance.now() - start);
+    } catch (err) {
+        testsFailed++;
+        renderResult(name, false, performance.now() - start, err.message);
+    }
+}
+
+function assertEqual(actual, expected, msg = "") {
+    if (actual !== expected) {
+        throw new Error(
+            `${msg ? msg + ": " : ""}Expected "${expected}", got "${actual}"`
+        );
+    }
+}
+
+function assertTrue(value, msg = "Expected true") {
+    if (!value) throw new Error(msg);
+}
+
+function assertFalse(value, msg = "Expected false") {
+    if (value) throw new Error(msg);
+}
+
+function assertNotEqual(a, b, msg = "") {
+    if (a === b) {
+        throw new Error(`${msg ? msg + ": " : ""}Values should differ but both are "${a}"`);
+    }
+}
+
+// ---- Test Cases ----
+
+async function runTests() {
+    const btn = document.getElementById("btnRun");
+    btn.disabled = true;
+    btn.textContent = "Running…";
+    resultsDiv.innerHTML = "";
+    testsPassed = 0;
+    testsFailed = 0;
+
+    // ---- SHA-256 Known-Answer Tests ----
+
+    await test("<strong>SHA-256:</strong> Known ASCII text", async () => {
+        const data = utf8Encoder.encode("The quick brown fox jumps over the lazy dog.\n");
+        const hash = await calculateSHA256(data);
+        assertEqual(hash, "b47cc0f104b62d4c7c30bcd68fd8e67613e287dc4ad8c310ef10cbadea9c4380");
+    });
+
+    await test("<strong>SHA-256:</strong> Empty input (well-known constant)", async () => {
+        const data = new Uint8Array(0);
+        const hash = await calculateSHA256(data);
+        assertEqual(hash, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    });
+
+    await test("<strong>SHA-256:</strong> Binary data (all byte values 0x00–0xFF)", async () => {
+        const data = new Uint8Array(256).map((_, i) => i);
+        const hash = await calculateSHA256(data);
+        assertEqual(hash, "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880");
+    });
+
+    await test("<strong>SHA-256:</strong> Unicode / UTF-8 text", async () => {
+        const data = utf8Encoder.encode("Ünïcödé Tëst: 日本語テスト 🔍🔒\n");
+        const hash = await calculateSHA256(data);
+        assertEqual(hash, "197a7e14689ce38e304c9bf1330595f0adaf36730c8c719d7d84710cc98ebf1e");
+    });
+
+    await test("<strong>SHA-256:</strong> Large input (~100 KiB repeated lines)", async () => {
+        const line = utf8Encoder.encode("ForensiCheck large-file test line.\n");
+        const result = new Uint8Array(line.length * 3000);
+        for (let i = 0; i < 3000; i++) result.set(line, i * line.length);
+        const hash = await calculateSHA256(result);
+        assertEqual(hash, "9f875318fe63115a88afff67768bd41d802098a725d015a62ba5173e297e9e59");
+    });
+
+    await test("<strong>SHA-256:</strong> Single null byte", async () => {
+        const data = new Uint8Array([0]);
+        const hash = await calculateSHA256(data);
+        // Known hash of a single 0x00 byte
+        assertEqual(hash, "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d");
+    });
+
+    // ---- Alteration Detection Tests ----
+
+    await test("<strong>Alteration:</strong> Single-char change produces different hash", async () => {
+        const orig = utf8Encoder.encode("The quick brown fox jumps over the lazy dog.\n");
+        const mod  = utf8Encoder.encode("The quick brown fox jumps over the lazy dog!\n");
+        const h1 = await calculateSHA256(orig);
+        const h2 = await calculateSHA256(mod);
+        assertNotEqual(h1, h2, "Hashes should differ for modified content");
+    });
+
+    await test("<strong>Alteration:</strong> Appended byte produces different hash", async () => {
+        const orig = utf8Encoder.encode("evidence");
+        const appended = new Uint8Array([...orig, 0]);
+        const h1 = await calculateSHA256(orig);
+        const h2 = await calculateSHA256(appended);
+        assertNotEqual(h1, h2, "Appending a byte should change the hash");
+    });
+
+    await test("<strong>TC-006:</strong> Modified File (tamper detection) comparison results in FAIL", async () => {
+        const originalExpected = "b47cc0f104b62d4c7c30bcd68fd8e67613e287dc4ad8c310ef10cbadea9c4380";
+        const modifiedData = utf8Encoder.encode("The quick brown fox jumps over the lazy dog!\n");
+        const observedHash = await calculateSHA256(modifiedData);
+        assertEqual(compareHashes(originalExpected, observedHash), "FAIL", "Modified file must fail comparison");
+        assertEqual(observedHash, "668acb539397715859d1e6db2322f98535b000356dacbce18fe12bacadd7f99b");
+    });
+
+    await test("<strong>TC-007:</strong> Invalid expected hash format is rejected (ERROR condition)", () => {
+        const invalidHash = "ZZZZ_NOT_A_VALID_HEX_HASH";
+        assertFalse(isValidSHA256Hex(invalidHash), "Invalid format must be rejected");
+    });
+
+    // ---- Hash Comparison Tests ----
+
+    await test("<strong>Compare:</strong> Matching hashes → PASS", () => {
+        const h = "aabbccdd".repeat(8);
+        assertEqual(compareHashes(h, h), "PASS");
+    });
+
+    await test("<strong>Compare:</strong> Case-insensitive match → PASS", () => {
+        const lower = "aabbccdd".repeat(8);
+        const upper = lower.toUpperCase();
+        assertEqual(compareHashes(lower, upper), "PASS");
+    });
+
+    await test("<strong>Compare:</strong> Mismatched hashes → FAIL", () => {
+        const h1 = "aa".repeat(32);
+        const h2 = "bb".repeat(32);
+        assertEqual(compareHashes(h1, h2), "FAIL");
+    });
+
+    await test("<strong>Compare:</strong> Whitespace is stripped during normalization", () => {
+        const h = "  aabbccdd".repeat(8) + "  ";
+        assertTrue(normalizeHash(h).startsWith("aabbccdd"), "Should strip whitespace");
+    });
+
+    // ---- Hash Format Validation Tests ----
+
+    await test("<strong>Validation:</strong> Valid 64-char hex → true", () => {
+        assertTrue(isValidSHA256Hex("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+    });
+
+    await test("<strong>Validation:</strong> Too short → false", () => {
+        assertFalse(isValidSHA256Hex("abcdef"));
+    });
+
+    await test("<strong>Validation:</strong> Too long (65 chars) → false", () => {
+        assertFalse(isValidSHA256Hex("a".repeat(65)));
+    });
+
+    await test("<strong>Validation:</strong> Invalid characters → false", () => {
+        assertFalse(isValidSHA256Hex("g".repeat(64)));
+    });
+
+    await test("<strong>Validation:</strong> Empty string → false", () => {
+        assertFalse(isValidSHA256Hex(""));
+    });
+
+    await test("<strong>Validation:</strong> Mixed case valid → true", () => {
+        assertTrue(isValidSHA256Hex("E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"));
+    });
+
+    // ---- CSV Escaping Tests ----
+
+    function csvEscape(value) {
+        const str = String(value ?? "");
+        if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+    }
+
+    await test("<strong>CSV:</strong> Plain text is not quoted", () => {
+        assertEqual(csvEscape("hello"), "hello");
+    });
+
+    await test("<strong>CSV:</strong> Commas are escaped with quotes", () => {
+        assertEqual(csvEscape("hello,world"), '"hello,world"');
+    });
+
+    await test("<strong>CSV:</strong> Internal quotes are doubled", () => {
+        assertEqual(csvEscape('say "hi"'), '"say ""hi"""');
+    });
+
+    await test("<strong>CSV:</strong> Newlines are escaped with quotes", () => {
+        assertEqual(csvEscape("line1\nline2"), '"line1\nline2"');
+    });
+
+    // ---- Summary ----
+    const total = testsPassed + testsFailed;
+    document.getElementById("summary").style.display = "flex";
+    document.getElementById("sumTotal").textContent = `Total: ${total}`;
+    document.getElementById("sumPass").textContent = `✅ Passed: ${testsPassed}`;
+    document.getElementById("sumFail").textContent = `❌ Failed: ${testsFailed}`;
+
+    btn.disabled = false;
+    btn.textContent = "▶ Run All Tests";
+}
+</script>
+
+</body>
+</html>

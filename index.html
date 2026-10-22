@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ForensiCheck — Digital Forensics Tool Validation Dashboard. Validates SHA-256 file hashing accuracy using known-answer tests. DF-PBL-030 project by Pranav Sharma, UPES Dehradun.">
+    <title>ForensiCheck — Forensic Tool Validation</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Mobile Toggle -->
+<button class="mobile-toggle" id="mobileToggle" aria-label="Toggle sidebar">☰</button>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-layout">
+
+    <!-- ======== Sidebar ======== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <span class="sidebar-brand-icon">🔒</span>
+            <span class="sidebar-brand-text">ForensiCheck</span>
+        </div>
+        <div class="sidebar-tagline">Forensic Tool Validation System</div>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-info">
+            <strong>Project:</strong> DF-PBL-030<br>
+            <strong>Student:</strong> Pranav Sharma<br>
+            <strong>ID:</strong> 500121423<br>
+            <strong>Institution:</strong> UPES, Dehradun<br>
+            <strong>Algorithm:</strong> SHA-256
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-nav-label">Navigation</div>
+        <ul class="sidebar-nav" id="sidebarNav">
+            <li><a href="#dashboard" data-page="dashboard" class="active">
+                <span class="nav-icon">🏠</span> Dashboard
+            </a></li>
+            <li><a href="#tests" data-page="tests">
+                <span class="nav-icon">🧪</span> Run Validation Tests
+            </a></li>
+            <li><a href="#upload" data-page="upload">
+                <span class="nav-icon">📤</span> File Upload &amp; Hash
+            </a></li>
+            <li><a href="#modification" data-page="modification">
+                <span class="nav-icon">🔍</span> Modification Detection
+            </a></li>
+            <li><a href="#results" data-page="results">
+                <span class="nav-icon">📊</span> Results Table
+            </a></li>
+            <li><a href="#export" data-page="export">
+                <span class="nav-icon">📋</span> Export Report
+            </a></li>
+        </ul>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-footer">
+            This tool validates SHA-256 hashing accuracy using known-answer tests.
+            It does not certify software for legal use.
+        </div>
+    </aside>
+
+    <!-- ======== Main Content ======== -->
+    <main class="main-content">
+
+        <!-- Banner -->
+        <div class="forensi-banner">
+            <h1 class="forensi-title">ForensiCheck</h1>
+            <p class="forensi-subtitle">Forensic Tool Validation System</p>
+            <div class="forensi-meta">
+                <span class="forensi-badge">🔐 SHA-256</span>
+                <span class="forensi-badge">📁 DF-PBL-030</span>
+                <span class="forensi-badge">🎓 UPES Dehradun</span>
+            </div>
+        </div>
+
+
+        <!-- ===================== PAGE: Dashboard ===================== -->
+        <section class="page-section active" id="page-dashboard">
+
+            <!-- Metric cards -->
+            <div class="metric-grid" id="dashboardMetrics">
+                <div class="metric-card">
+                    <div class="metric-icon">📁</div>
+                    <div class="metric-value val-blue" id="metricTotal">7</div>
+                    <div class="metric-label">Total Test Cases</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">✅</div>
+                    <div class="metric-value val-green" id="metricPassed">0</div>
+                    <div class="metric-label">Passed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">❌</div>
+                    <div class="metric-value val-red" id="metricFailed">0</div>
+                    <div class="metric-label">Failed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">⚠️</div>
+                    <div class="metric-value val-amber" id="metricErrors">0</div>
+                    <div class="metric-label">Errors</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">⏳</div>
+                    <div class="metric-value val-cyan" id="metricPending">7</div>
+                    <div class="metric-label">Not Executed</div>
+                </div>
+            </div>
+
+            <!-- Overall validation status -->
+            <div id="dashboardStatus">
+                <div class="info-box">
+                    ℹ️ <strong>No tests have been executed yet.</strong>
+                    Navigate to <em>🧪 Run Validation Tests</em> in the sidebar to execute the known-answer test suite.
+                </div>
+            </div>
+
+            <!-- Known-answer test definitions -->
+            <div class="section-card">
+                <div class="section-title">📋 Known-Answer Test Cases</div>
+                <div id="fixtureList"></div>
+            </div>
+        </section>
+
+
+        <!-- ===================== PAGE: Run Validation Tests ===================== -->
+        <section class="page-section" id="page-tests">
+            <h2 class="page-heading">🧪 Run Known-Answer Validation Tests</h2>
+
+            <div class="info-box">
+                This will generate controlled test data in-memory,
+                compute SHA-256 hashes using the browser's <code>Web Crypto API</code>,
+                and compare each result against independently-established expected values.
+                <br><br>
+                <strong>TC-006</strong> is deliberately designed to <strong>FAIL</strong> —
+                it verifies that even a single-character change to a file produces a different hash.
+                <br><br>
+                <strong>TC-007</strong> uses a deliberately incorrect expected hash to demonstrate <strong>ERROR</strong> handling
+                for invalid hash formats.
+            </div>
+
+            <div class="flex gap-2 mb-3 flex-wrap">
+                <button class="btn btn-primary" id="btnRunAll">
+                    ▶ Run All Tests
+                </button>
+                <button class="btn btn-secondary" id="btnClearResults">
+                    🗑️ Clear Results
+                </button>
+            </div>
+
+            <!-- Test results (expandable cards) -->
+            <div id="testResultCards"></div>
+
+            <div class="sidebar-divider mt-3"></div>
+
+            <!-- Single test runner -->
+            <h3 class="mb-2" style="font-size: 1.1rem;">Run a Single Test Case</h3>
+            <div class="flex gap-2 flex-wrap items-center">
+                <label for="singleTestSelect" class="sr-only">Select a test case to run</label>
+                <select class="form-select" id="singleTestSelect" aria-label="Select a test case to run" style="max-width: 400px;"></select>
+                <button class="btn btn-primary" id="btnRunSingle">▶ Run Selected</button>
+            </div>
+        </section>
+
+
+        <!-- ===================== PAGE: File Upload & Hash ===================== -->
+        <section class="page-section" id="page-upload">
+            <h2 class="page-heading">📤 File Upload &amp; Hash Calculation</h2>
+
+            <div class="info-box">
+                Upload any file to compute its SHA-256 hash. The file is processed entirely
+                <strong>in your browser</strong> using the Web Crypto API — no data is uploaded to a server.
+                <br><br>
+                ⚠️ A hash alone cannot establish the authenticity or ownership of a file.
+                It only confirms the file's content at the time of hashing.
+            </div>
+
+            <!-- Upload zone -->
+            <div class="upload-zone" id="uploadZone">
+                <label for="fileInput" class="sr-only">Choose a file to hash</label>
+                <input type="file" id="fileInput" aria-label="Choose a file to hash">
+                <div class="upload-zone-icon">📂</div>
+                <div class="upload-zone-text">Drag &amp; drop a file here, or click to browse</div>
+                <div class="upload-zone-hint">All processing is done locally in your browser</div>
+            </div>
+
+            <!-- File info (hidden until file selected) -->
+            <div class="section-card hidden" id="fileInfoCard">
+                <div class="section-title">📄 File Information</div>
+                <div class="test-detail-grid">
+                    <div class="test-detail-item">
+                        <label>Filename</label>
+                        <span id="uploadFilename">—</span>
+                    </div>
+                    <div class="test-detail-item">
+                        <label>File Size</label>
+                        <span id="uploadFilesize">—</span>
+                    </div>
+                </div>
+                <div class="form-label mt-2">Calculated SHA-256:</div>
+                <div class="hash-display" id="uploadHash" title="Click to copy">Calculating…</div>
+            </div>
+
+            <!-- Compare section -->
+            <div class="section-card hidden" id="compareSection">
+                <div class="section-title">🔍 Compare with Expected Hash</div>
+
+                <div class="form-group">
+                    <label class="form-label" for="expectedHashInput">Expected SHA-256 hash (64 hex characters)</label>
+                    <input type="text" class="form-input" id="expectedHashInput" maxlength="64"
+                           aria-label="Expected SHA-256 hash"
+                           placeholder="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">
+                </div>
+                <button class="btn btn-primary mb-2" id="btnCompareHash">🔍 Compare</button>
+                <div id="compareResult"></div>
+            </div>
+        </section>
+
+
+        <!-- ===================== PAGE: Modification Detection ===================== -->
+        <section class="page-section" id="page-modification">
+            <h2 class="page-heading">🔍 File Modification Detection Demonstration</h2>
+
+            <div class="info-box">
+                This demonstration shows that even a <strong>single-character change</strong>
+                to a file produces a completely different SHA-256 hash. The original content is preserved;
+                a modified copy is compared against the baseline.
+            </div>
+
+            <button class="btn btn-primary btn-wide mb-3" id="btnRunModDemo">
+                ▶ Run Modification Detection Demo
+            </button>
+
+            <div id="modDemoResult" class="hidden">
+                <div class="comparison-grid">
+                    <!-- Original -->
+                    <div class="section-card" id="modOriginalCard">
+                        <div class="section-title">📄 Original File</div>
+                        <div class="test-detail-grid">
+                            <div class="test-detail-item">
+                                <label>File</label>
+                                <span id="modOrigName">—</span>
+                            </div>
+                            <div class="test-detail-item">
+                                <label>Size</label>
+                                <span id="modOrigSize">—</span>
+                            </div>
+                        </div>
+                        <div class="form-label mt-1">Content:</div>
+                        <div class="hash-display mb-2" id="modOrigContent" style="color: var(--text-secondary);"></div>
+                        <div class="form-label">SHA-256:</div>
+                        <div class="hash-display hash-match" id="modOrigHash"></div>
+                    </div>
+
+                    <!-- Modified -->
+                    <div class="section-card" id="modModifiedCard">
+                        <div class="section-title">📝 Modified File</div>
+                        <div class="test-detail-grid">
+                            <div class="test-detail-item">
+                                <label>File</label>
+                                <span id="modModName">—</span>
+                            </div>
+                            <div class="test-detail-item">
+                                <label>Size</label>
+                                <span id="modModSize">—</span>
+                            </div>
+                        </div>
+                        <div class="form-label mt-1">Content:</div>
+                        <div class="hash-display mb-2" id="modModContent" style="color: var(--text-secondary);"></div>
+                        <div class="form-label">SHA-256:</div>
+                        <div class="hash-display hash-mismatch" id="modModHash"></div>
+                    </div>
+                </div>
+
+                <!-- Comparison result -->
+                <div id="modComparisonResult"></div>
+
+                <div class="info-box mt-2">
+                    <strong>Why do the hashes differ?</strong><br>
+                    SHA-256 is a cryptographic hash function with the <em>avalanche effect</em>:
+                    even a single-bit change in the input produces a dramatically different hash output.
+                    This property makes it suitable for detecting file modifications in digital forensics.
+                    <br><br>
+                    <strong>Note:</strong> The original content was never overwritten. A separate modified
+                    copy was created and compared against the original's baseline hash.
+                </div>
+
+                <p class="text-muted mt-2" id="modTimestamp" style="font-size: 0.82rem;"></p>
+            </div>
+        </section>
+
+
+        <!-- ===================== PAGE: Results Table ===================== -->
+        <section class="page-section" id="page-results">
+            <h2 class="page-heading">📊 Validation Results Table</h2>
+
+            <div id="resultsContent">
+                <div class="empty-state" id="resultsEmpty">
+                    <div class="empty-state-icon">📊</div>
+                    <div class="empty-state-text">No results to display.</div>
+                    <div class="empty-state-hint">Run the validation test suite first from the 🧪 Run Validation Tests page.</div>
+                </div>
+            </div>
+
+            <!-- Populated when tests are run -->
+            <div id="resultsPopulated" class="hidden">
+                <div class="metric-grid" id="resultsMetrics"></div>
+                <div class="search-bar">
+                    <label for="resultsSearch" class="sr-only">Search validation results</label>
+                    <input type="text" id="resultsSearch" aria-label="Search validation results" placeholder="Search by test ID, name, or status…">
+                </div>
+                <div class="data-table-wrapper">
+                    <table class="data-table" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Test ID</th>
+                                <th>Test Name</th>
+                                <th>Filename</th>
+                                <th>Size</th>
+                                <th>Expected SHA-256</th>
+                                <th>Observed SHA-256</th>
+                                <th>Status</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Detailed per-result cards -->
+                <h3 style="font-size: 1.1rem;" class="mb-2">🔎 Detailed Results</h3>
+                <div id="resultsDetailCards"></div>
+            </div>
+        </section>
+
+
+        <!-- ===================== PAGE: Export Report ===================== -->
+        <section class="page-section" id="page-export">
+            <h2 class="page-heading">📋 Export Validation Report</h2>
+
+            <div id="exportContent">
+                <div class="empty-state" id="exportEmpty">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text">No results to export.</div>
+                    <div class="empty-state-hint">Execute the test suite first.</div>
+                </div>
+            </div>
+
+            <div id="exportPopulated" class="hidden">
+                <!-- CSV Export -->
+                <div class="section-card">
+                    <div class="section-title">📄 CSV Report</div>
+                    <button class="btn btn-primary btn-wide mb-2" id="btnExportCSV">
+                        ⬇ Download CSV Report
+                    </button>
+                    <div class="info-box" id="csvHashInfo"></div>
+                </div>
+
+                <!-- Investigation Memo -->
+                <div class="section-card">
+                    <div class="section-title">📝 Investigation Memo</div>
+                    <button class="btn btn-success btn-wide mb-2" id="btnExportMemo">
+                        ⬇ Download Investigation Memo
+                    </button>
+                    <div class="info-box" id="memoHashInfo"></div>
+
+                    <div class="mt-2">
+                        <button class="btn btn-secondary" id="btnToggleMemoPreview">📖 Preview Memo</button>
+                    </div>
+                    <div class="hidden mt-2" id="memoPreviewContainer">
+                        <div class="memo-preview" id="memoPreview"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Footer -->
+        <footer class="forensi-footer">
+            ForensiCheck v2.0 — Forensic Tool Validation System<br>
+            DF-PBL-030 · Pranav Sharma (500121423) · UPES, Dehradun<br>
+            Built with HTML, CSS, JavaScript &amp; Web Crypto API · SHA-256 Validation Engine
+        </footer>
+
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

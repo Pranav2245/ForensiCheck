@@ -1,0 +1,13 @@
+{
+  "name": "forensicheck",
+  "version": "2.0.0",
+  "description": "ForensiCheck — Digital Forensics Tool Validation Dashboard (DF-PBL-030)",
+  "author": "Pranav Sharma (500121423)",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "npx -y serve@latest . -l 3000 --no-clipboard",
+    "start": "npx -y serve@latest . -l 3000 --no-clipboard",
+    "test": "node tests/hashing.test.js"
+  }
+}
