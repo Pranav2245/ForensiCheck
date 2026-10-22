@@ -22,12 +22,9 @@ from __future__ import annotations
 
 import hashlib
 import os
-import sys
 import tempfile
 from pathlib import Path
 
-# Ensure project root is in sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest
 
