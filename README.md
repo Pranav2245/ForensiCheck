@@ -81,7 +81,7 @@ Open `tests/hashing.test.html` in your browser and click **"Run All Tests"**.
 **Option 3 — Optional Python core tests:**
 
 ```bash
-pytest tests/test_forensic_core.py
+pytest python/test_forensic_core.py
 ```
 
 The test suites validate:
@@ -100,20 +100,21 @@ DF-Project/
 ├── index.html              # Main dashboard page
 ├── style.css               # Dark forensic theme
 ├── script.js               # All interactive logic (Web Crypto SHA-256)
-├── package.json            # npm scripts for dev server & test runner
-├── vercel.json             # Vercel deployment configuration
+├── package.json            # npm scripts: dev server, build & automated tests
+├── vercel.json             # Vercel static deployment configuration
 ├── README.md               # Project documentation & deployment guide
 ├── tests/
 │   ├── hashing.test.js     # Automated Node.js CLI test suite (23 tests)
-│   ├── hashing.test.html   # Browser-based test runner
-│   └── test_forensic_core.py  # Python baseline tests (reference)
+│   └── hashing.test.html   # Browser-based test runner
 ├── fixtures/               # Generated test fixture files (reference)
 ├── reports/                # Exported reports directory
-├── docs/
-│   └── investigation_memo_template.md
-├── forensic_core.py        # Python hashing core (reference)
-├── test_fixtures.py        # Python test fixtures (reference)
-└── requirements.txt        # Optional Python dependencies (pytest)
+├── docs/                   # Documentation templates
+└── python/                 # Reference Python implementations & unit tests
+    ├── forensic_core.py    # Python hashing core (reference)
+    ├── test_fixtures.py    # Python test fixtures (reference)
+    ├── test_forensic_core.py # Python baseline unit tests (reference)
+    ├── requirements.txt    # Python test dependencies (pytest)
+    └── pytest.ini          # Pytest configuration
 ```
 
 ### Module Responsibilities
@@ -125,6 +126,7 @@ DF-Project/
 | `script.js` | SHA-256 hashing (Web Crypto), test runner, navigation, CSV export |
 | `tests/hashing.test.js` | Automated Node.js CLI test suite for CI and local verification |
 | `tests/hashing.test.html` | Automated browser-based test suite for all hashing logic |
+| `python/` | Reference Python implementations & baseline validation tests |
 
 ---
 

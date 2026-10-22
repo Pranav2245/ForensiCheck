@@ -6,6 +6,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
+    "build": "node tests/hashing.test.js",
     "dev": "npx -y serve@latest . -l 3000 --no-clipboard",
     "start": "npx -y serve@latest . -l 3000 --no-clipboard",
     "test": "node tests/hashing.test.js"
