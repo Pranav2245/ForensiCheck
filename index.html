@@ -46,6 +46,9 @@
             <li><a href="#tests" data-page="tests">
                 <span class="nav-icon">🧪</span> Run Validation Tests
             </a></li>
+            <li><a href="#calculator" data-page="calculator">
+                <span class="nav-icon">🧮</span> Hash Calculator
+            </a></li>
             <li><a href="#upload" data-page="upload">
                 <span class="nav-icon">📤</span> File Upload &amp; Hash
             </a></li>
@@ -167,6 +170,257 @@
                 <label for="singleTestSelect" class="sr-only">Select a test case to run</label>
                 <select class="form-select" id="singleTestSelect" aria-label="Select a test case to run" style="max-width: 400px;"></select>
                 <button class="btn btn-primary" id="btnRunSingle">▶ Run Selected</button>
+            </div>
+        </section>
+
+
+        <!-- ===================== PAGE: Hash Calculator ===================== -->
+        <section class="page-section" id="page-calculator">
+            <h2 class="page-heading">🧮 Cryptographic Hash Calculator</h2>
+
+            <div class="info-box">
+                Compute multiple forensic cryptographic hash digests (<strong>MD5, SHA-1, SHA-256, SHA-384, SHA-512, CRC-32</strong>)
+                in real time for any arbitrary <strong>text / string</strong> or <strong>file</strong>.
+                All calculations execute client-side via the <code>Web Crypto API</code> and local engines — 100% private and offline.
+            </div>
+
+            <!-- Input Mode Switcher Tabs -->
+            <div class="calc-tabs mb-3">
+                <button class="calc-tab-btn active" id="calcTabBtnText" type="button">
+                    <span>✍️</span> Text / String Input
+                </button>
+                <button class="calc-tab-btn" id="calcTabBtnFile" type="button">
+                    <span>📁</span> File Input
+                </button>
+            </div>
+
+            <!-- Text Mode Panel -->
+            <div id="calcTextModePanel">
+                <div class="section-card mb-3">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                        <div class="section-title mb-0">✍️ Raw Text &amp; Payload Input</div>
+                        <div class="flex items-center gap-1 flex-wrap">
+                            <label for="calcEncodingSelect" class="form-label mb-0 text-muted" style="font-size: 0.8rem;">Encoding:</label>
+                            <select id="calcEncodingSelect" class="form-select form-select-sm" style="width: auto; padding: 0.35rem 1.8rem 0.35rem 0.7rem; font-size: 0.8rem;">
+                                <option value="utf-8" selected>UTF-8 (Standard Text)</option>
+                                <option value="ascii">ASCII / Latin-1</option>
+                                <option value="hex">Hex String (Raw Bytes)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Presets -->
+                    <div class="flex items-center gap-1 flex-wrap mb-2">
+                        <span class="text-muted" style="font-size: 0.78rem; font-weight: 600;">QUICK FILL:</span>
+                        <button type="button" class="btn btn-preset" id="calcPresetFox">🦊 Quick Brown Fox</button>
+                        <button type="button" class="btn btn-preset" id="calcPresetEmpty">📄 Empty String</button>
+                        <button type="button" class="btn btn-preset" id="calcPresetUnicode">🌐 Unicode / Emoji</button>
+                        <button type="button" class="btn btn-preset" id="calcPresetForensic">🔬 Forensic Artifact</button>
+                        <button type="button" class="btn btn-preset text-red" id="calcPresetClear">🗑️ Clear</button>
+                    </div>
+
+                    <div class="form-group mb-2">
+                        <label for="calcTextInput" class="sr-only">Enter text to hash</label>
+                        <textarea id="calcTextInput" class="calc-textarea" rows="4" placeholder="Type or paste any text, string, or payload here to calculate hashes in real time…"></textarea>
+                    </div>
+
+                    <!-- Live Stats Bar -->
+                    <div class="calc-stats-bar">
+                        <div class="calc-stat-item">
+                            <span class="calc-stat-lbl">Characters:</span>
+                            <span class="calc-stat-val" id="calcStatChars">0</span>
+                        </div>
+                        <div class="calc-stat-item">
+                            <span class="calc-stat-lbl">Bytes:</span>
+                            <span class="calc-stat-val" id="calcStatBytes">0 bytes</span>
+                        </div>
+                        <div class="calc-stat-item">
+                            <span class="calc-stat-lbl">Lines:</span>
+                            <span class="calc-stat-val" id="calcStatLines">0</span>
+                        </div>
+                        <div class="calc-stat-item">
+                            <span class="calc-stat-lbl">Status:</span>
+                            <span class="calc-stat-val text-green" id="calcStatStatus">⚡ Live Sync Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Mode Panel (Hidden initially) -->
+            <div id="calcFileModePanel" class="hidden">
+                <div class="upload-zone mb-3" id="calcFileDropZone">
+                    <label for="calcFileInput" class="sr-only">Select file to calculate hashes</label>
+                    <input type="file" id="calcFileInput" aria-label="Select file to calculate hashes">
+                    <div class="upload-zone-icon">📁</div>
+                    <div class="upload-zone-text">Drag &amp; drop any file here, or click to browse</div>
+                    <div class="upload-zone-hint">Processes files up to 500 MB locally in your browser</div>
+                </div>
+
+                <!-- File Info Card (hidden until file loaded) -->
+                <div class="section-card hidden mb-3" id="calcFileInfoCard">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                        <div class="section-title mb-0">📄 Loaded File Metadata</div>
+                        <button type="button" class="btn btn-secondary btn-sm" id="calcFileClearBtn">✕ Clear File</button>
+                    </div>
+                    <div class="test-detail-grid">
+                        <div class="test-detail-item">
+                            <label>Filename</label>
+                            <span id="calcMetaFilename">—</span>
+                        </div>
+                        <div class="test-detail-item">
+                            <label>Size</label>
+                            <span id="calcMetaSize">—</span>
+                        </div>
+                        <div class="test-detail-item">
+                            <label>MIME Type</label>
+                            <span id="calcMetaType">—</span>
+                        </div>
+                        <div class="test-detail-item">
+                            <label>Last Modified</label>
+                            <span id="calcMetaModified">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Hash Verifier / Matcher -->
+            <div class="section-card mb-3">
+                <div class="section-title">🔍 Quick Hash Verifier &amp; Matcher</div>
+                <div class="form-group mb-2">
+                    <label class="form-label" for="calcVerifyInput">
+                        Paste a known, baseline, or suspect hash to verify against all computed algorithms:
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" class="form-input" id="calcVerifyInput"
+                               placeholder="e.g. d7a8fbb307d7809469ca9ab400f20d84e50f8f560fb0107d03199dd6e804fee7"
+                               autocomplete="off" spellcheck="false">
+                        <button type="button" class="btn btn-secondary" id="calcClearVerifyBtn">Clear</button>
+                    </div>
+                </div>
+                <div id="calcVerifyFeedback"></div>
+            </div>
+
+            <!-- Toolbar / Options Bar -->
+            <div class="calc-toolbar mb-3">
+                <div class="calc-toolbar-group">
+                    <span class="calc-toolbar-label">Hex Case:</span>
+                    <div class="segmented-control">
+                        <button type="button" class="segmented-btn active" id="calcCaseLower" data-case="lower">lowercase</button>
+                        <button type="button" class="segmented-btn" id="calcCaseUpper" data-case="upper">UPPERCASE</button>
+                    </div>
+                </div>
+                <div class="calc-toolbar-group flex-wrap gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" id="calcCopyAllBtn">
+                        📋 Copy All Hashes
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="calcDownloadTxtBtn">
+                        ⬇ Download Report (.txt)
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" id="calcDownloadSha256Btn">
+                        ⬇ Download .sha256
+                    </button>
+                </div>
+            </div>
+
+            <!-- Multi-Algorithm Hash Results Cards Grid -->
+            <div class="calc-results-grid" id="calcResultsGrid">
+
+                <!-- SHA-256 Card (Primary) -->
+                <div class="calc-algo-card" id="algoCard-sha256">
+                    <div class="calc-algo-header">
+                        <div class="calc-algo-title-wrap">
+                            <span class="calc-algo-title">SHA-256</span>
+                            <span class="calc-algo-badge badge-primary">FIPS 180-4 · 256-bit</span>
+                        </div>
+                        <div class="calc-algo-match-pill hidden" id="algoMatch-sha256">✅ MATCHED</div>
+                    </div>
+                    <div class="calc-algo-desc">Primary forensic validation standard · 64 hexadecimal characters</div>
+                    <div class="calc-hash-row">
+                        <div class="calc-hash-display" id="calcHash-sha256" title="Click to copy hash">Calculating…</div>
+                        <button type="button" class="btn-copy" data-algo="sha256" title="Copy SHA-256">📋</button>
+                    </div>
+                </div>
+
+                <!-- MD5 Card -->
+                <div class="calc-algo-card" id="algoCard-md5">
+                    <div class="calc-algo-header">
+                        <div class="calc-algo-title-wrap">
+                            <span class="calc-algo-title">MD5</span>
+                            <span class="calc-algo-badge badge-amber">RFC 1321 · 128-bit</span>
+                        </div>
+                        <div class="calc-algo-match-pill hidden" id="algoMatch-md5">✅ MATCHED</div>
+                    </div>
+                    <div class="calc-algo-desc">Legacy forensic triage &amp; NSRL hash matching · 32 hexadecimal characters</div>
+                    <div class="calc-hash-row">
+                        <div class="calc-hash-display" id="calcHash-md5" title="Click to copy hash">Calculating…</div>
+                        <button type="button" class="btn-copy" data-algo="md5" title="Copy MD5">📋</button>
+                    </div>
+                </div>
+
+                <!-- SHA-1 Card -->
+                <div class="calc-algo-card" id="algoCard-sha1">
+                    <div class="calc-algo-header">
+                        <div class="calc-algo-title-wrap">
+                            <span class="calc-algo-title">SHA-1</span>
+                            <span class="calc-algo-badge badge-info">FIPS 180-1 · 160-bit</span>
+                        </div>
+                        <div class="calc-algo-match-pill hidden" id="algoMatch-sha1">✅ MATCHED</div>
+                    </div>
+                    <div class="calc-algo-desc">Legacy NIST integrity check &amp; git object hash · 40 hexadecimal characters</div>
+                    <div class="calc-hash-row">
+                        <div class="calc-hash-display" id="calcHash-sha1" title="Click to copy hash">Calculating…</div>
+                        <button type="button" class="btn-copy" data-algo="sha1" title="Copy SHA-1">📋</button>
+                    </div>
+                </div>
+
+                <!-- SHA-512 Card -->
+                <div class="calc-algo-card" id="algoCard-sha512">
+                    <div class="calc-algo-header">
+                        <div class="calc-algo-title-wrap">
+                            <span class="calc-algo-title">SHA-512</span>
+                            <span class="calc-algo-badge badge-purple">FIPS 180-4 · 512-bit</span>
+                        </div>
+                        <div class="calc-algo-match-pill hidden" id="algoMatch-sha512">✅ MATCHED</div>
+                    </div>
+                    <div class="calc-algo-desc">High-security digital evidence verification · 128 hexadecimal characters</div>
+                    <div class="calc-hash-row">
+                        <div class="calc-hash-display" id="calcHash-sha512" title="Click to copy hash">Calculating…</div>
+                        <button type="button" class="btn-copy" data-algo="sha512" title="Copy SHA-512">📋</button>
+                    </div>
+                </div>
+
+                <!-- SHA-384 Card -->
+                <div class="calc-algo-card" id="algoCard-sha384">
+                    <div class="calc-algo-header">
+                        <div class="calc-algo-title-wrap">
+                            <span class="calc-algo-title">SHA-384</span>
+                            <span class="calc-algo-badge badge-blue">FIPS 180-4 · 384-bit</span>
+                        </div>
+                        <div class="calc-algo-match-pill hidden" id="algoMatch-sha384">✅ MATCHED</div>
+                    </div>
+                    <div class="calc-algo-desc">NSA Suite B Cryptography standard · 96 hexadecimal characters</div>
+                    <div class="calc-hash-row">
+                        <div class="calc-hash-display" id="calcHash-sha384" title="Click to copy hash">Calculating…</div>
+                        <button type="button" class="btn-copy" data-algo="sha384" title="Copy SHA-384">📋</button>
+                    </div>
+                </div>
+
+                <!-- CRC-32 Card -->
+                <div class="calc-algo-card" id="algoCard-crc32">
+                    <div class="calc-algo-header">
+                        <div class="calc-algo-title-wrap">
+                            <span class="calc-algo-title">CRC-32</span>
+                            <span class="calc-algo-badge badge-cyan">IEEE 802.3 · 32-bit</span>
+                        </div>
+                        <div class="calc-algo-match-pill hidden" id="algoMatch-crc32">✅ MATCHED</div>
+                    </div>
+                    <div class="calc-algo-desc">Cyclic redundancy error-detection checksum · 8 hexadecimal characters</div>
+                    <div class="calc-hash-row">
+                        <div class="calc-hash-display" id="calcHash-crc32" title="Click to copy hash">Calculating…</div>
+                        <button type="button" class="btn-copy" data-algo="crc32" title="Copy CRC-32">📋</button>
+                    </div>
+                </div>
+
             </div>
         </section>
 

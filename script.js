@@ -192,6 +192,238 @@ async function calculateSHA256FromFile(file) {
     return calculateSHA256(arrayBuffer);
 }
 
+/**
+ * Calculate standard Web Crypto API digest (SHA-1, SHA-256, SHA-384, SHA-512).
+ * @param {string} algorithm - "SHA-1", "SHA-256", "SHA-384", "SHA-512"
+ * @param {Uint8Array|ArrayBuffer} data
+ * @returns {Promise<string>} Lowercase hexadecimal digest.
+ */
+async function calculateDigest(algorithm, data) {
+    const buffer = data instanceof ArrayBuffer ? data : data.buffer.slice(
+        data.byteOffset, data.byteOffset + data.byteLength
+    );
+    const hashBuffer = await crypto.subtle.digest(algorithm, buffer);
+    const hashArray = new Uint8Array(hashBuffer);
+    return Array.from(hashArray)
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+}
+
+/**
+ * Calculate the MD5 hash (RFC 1321) of a Uint8Array, ArrayBuffer, or string.
+ * Uses a pure JavaScript implementation for 100% browser and offline compatibility.
+ * @param {Uint8Array|ArrayBuffer|string} input
+ * @returns {string} Lowercase 32-character hexadecimal MD5 digest.
+ */
+function calculateMD5(input) {
+    let bytes;
+    if (typeof input === "string") {
+        bytes = utf8Encoder.encode(input);
+    } else if (input instanceof ArrayBuffer) {
+        bytes = new Uint8Array(input);
+    } else if (input instanceof Uint8Array) {
+        bytes = input;
+    } else {
+        bytes = new Uint8Array(0);
+    }
+
+    function safeAdd(x, y) {
+        const lsw = (x & 0xffff) + (y & 0xffff);
+        const msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+        return (msw << 16) | (lsw & 0xffff);
+    }
+
+    function bitRotateLeft(num, cnt) {
+        return (num << cnt) | (num >>> (32 - cnt));
+    }
+
+    function md5cmn(q, a, b, x, s, t) {
+        return safeAdd(bitRotateLeft(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b);
+    }
+    function md5ff(a, b, c, d, x, s, t) {
+        return md5cmn((b & c) | (~b & d), a, b, x, s, t);
+    }
+    function md5gg(a, b, c, d, x, s, t) {
+        return md5cmn((b & d) | (c & ~d), a, b, x, s, t);
+    }
+    function md5hh(a, b, c, d, x, s, t) {
+        return md5cmn(b ^ c ^ d, a, b, x, s, t);
+    }
+    function md5ii(a, b, c, d, x, s, t) {
+        return md5cmn(c ^ (b | ~d), a, b, x, s, t);
+    }
+
+    const nblk = ((bytes.length + 8) >> 6) + 1;
+    const blks = new Array(nblk * 16).fill(0);
+    for (let i = 0; i < bytes.length; i++) {
+        blks[i >> 2] |= bytes[i] << ((i % 4) * 8);
+    }
+    blks[bytes.length >> 2] |= 0x80 << ((bytes.length % 4) * 8);
+    blks[nblk * 16 - 2] = (bytes.length * 8) & 0xffffffff;
+    blks[nblk * 16 - 1] = Math.floor((bytes.length * 8) / 0x100000000);
+
+    let a = 1732584193;
+    let b = -271733879;
+    let c = -1732584194;
+    let d = 271733878;
+
+    for (let i = 0; i < blks.length; i += 16) {
+        const olda = a, oldb = b, oldc = c, oldd = d;
+
+        a = md5ff(a, b, c, d, blks[i + 0], 7, -680876936);
+        d = md5ff(d, a, b, c, blks[i + 1], 12, -389564586);
+        c = md5ff(c, d, a, b, blks[i + 2], 17, 606105819);
+        b = md5ff(b, c, d, a, blks[i + 3], 22, -1044525330);
+        a = md5ff(a, b, c, d, blks[i + 4], 7, -176418897);
+        d = md5ff(d, a, b, c, blks[i + 5], 12, 1200080426);
+        c = md5ff(c, d, a, b, blks[i + 6], 17, -1473231341);
+        b = md5ff(b, c, d, a, blks[i + 7], 22, -45705983);
+        a = md5ff(a, b, c, d, blks[i + 8], 7, 1770035416);
+        d = md5ff(d, a, b, c, blks[i + 9], 12, -1958414417);
+        c = md5ff(c, d, a, b, blks[i + 10], 17, -42063);
+        b = md5ff(b, c, d, a, blks[i + 11], 22, -1990404162);
+        a = md5ff(a, b, c, d, blks[i + 12], 7, 1804603682);
+        d = md5ff(d, a, b, c, blks[i + 13], 12, -40341101);
+        c = md5ff(c, d, a, b, blks[i + 14], 17, -1502002290);
+        b = md5ff(b, c, d, a, blks[i + 15], 22, 1236535329);
+
+        a = md5gg(a, b, c, d, blks[i + 1], 5, -165796510);
+        d = md5gg(d, a, b, c, blks[i + 6], 9, -1069501632);
+        c = md5gg(c, d, a, b, blks[i + 11], 14, 643717713);
+        b = md5gg(b, c, d, a, blks[i + 0], 20, -373897302);
+        a = md5gg(a, b, c, d, blks[i + 5], 5, -701558691);
+        d = md5gg(d, a, b, c, blks[i + 10], 9, 38016083);
+        c = md5gg(c, d, a, b, blks[i + 15], 14, -660478335);
+        b = md5gg(b, c, d, a, blks[i + 4], 20, -405537848);
+        a = md5gg(a, b, c, d, blks[i + 9], 5, 568446438);
+        d = md5gg(d, a, b, c, blks[i + 14], 9, -1019803690);
+        c = md5gg(c, d, a, b, blks[i + 3], 14, -187363961);
+        b = md5gg(b, c, d, a, blks[i + 8], 20, 1163531501);
+        a = md5gg(a, b, c, d, blks[i + 13], 5, -1444681467);
+        d = md5gg(d, a, b, c, blks[i + 2], 9, -51403784);
+        c = md5gg(c, d, a, b, blks[i + 7], 14, 1735328473);
+        b = md5gg(b, c, d, a, blks[i + 12], 20, -1926607734);
+
+        a = md5hh(a, b, c, d, blks[i + 5], 4, -378558);
+        d = md5hh(d, a, b, c, blks[i + 8], 11, -2022574463);
+        c = md5hh(c, d, a, b, blks[i + 11], 16, 1839030562);
+        b = md5hh(b, c, d, a, blks[i + 14], 23, -35309556);
+        a = md5hh(a, b, c, d, blks[i + 1], 4, -1530992060);
+        d = md5hh(d, a, b, c, blks[i + 4], 11, 1272893353);
+        c = md5hh(c, d, a, b, blks[i + 7], 16, -155497632);
+        b = md5hh(b, c, d, a, blks[i + 10], 23, -1094730640);
+        a = md5hh(a, b, c, d, blks[i + 13], 4, 681279174);
+        d = md5hh(d, a, b, c, blks[i + 0], 11, -358537222);
+        c = md5hh(c, d, a, b, blks[i + 3], 16, -722521979);
+        b = md5hh(b, c, d, a, blks[i + 6], 23, 76029189);
+        a = md5hh(a, b, c, d, blks[i + 9], 4, -640364487);
+        d = md5hh(d, a, b, c, blks[i + 12], 11, -421815835);
+        c = md5hh(c, d, a, b, blks[i + 15], 16, 530742520);
+        b = md5hh(b, c, d, a, blks[i + 2], 23, -995338651);
+
+        a = md5ii(a, b, c, d, blks[i + 0], 6, -198630844);
+        d = md5ii(d, a, b, c, blks[i + 7], 10, 1126891415);
+        c = md5ii(c, d, a, b, blks[i + 14], 15, -1416354905);
+        b = md5ii(b, c, d, a, blks[i + 5], 21, -57434055);
+        a = md5ii(a, b, c, d, blks[i + 12], 6, 1700485571);
+        d = md5ii(d, a, b, c, blks[i + 3], 10, -1894986606);
+        c = md5ii(c, d, a, b, blks[i + 10], 15, -1051523);
+        b = md5ii(b, c, d, a, blks[i + 1], 21, -2054922799);
+        a = md5ii(a, b, c, d, blks[i + 8], 6, 1873313359);
+        d = md5ii(d, a, b, c, blks[i + 15], 10, -30611744);
+        c = md5ii(c, d, a, b, blks[i + 6], 15, -1560198380);
+        b = md5ii(b, c, d, a, blks[i + 13], 21, 1309151649);
+        a = md5ii(a, b, c, d, blks[i + 4], 6, -145523070);
+        d = md5ii(d, a, b, c, blks[i + 11], 10, -1120210379);
+        c = md5ii(c, d, a, b, blks[i + 2], 15, 718787259);
+        b = md5ii(b, c, d, a, blks[i + 9], 21, -343485551);
+
+        a = safeAdd(a, olda);
+        b = safeAdd(b, oldb);
+        c = safeAdd(c, oldc);
+        d = safeAdd(d, oldd);
+    }
+
+    function wordToHex(val) {
+        let hex = "";
+        for (let j = 0; j <= 3; j++) {
+            const byte = (val >>> (j * 8)) & 255;
+            hex += byte.toString(16).padStart(2, "0");
+        }
+        return hex;
+    }
+
+    return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase();
+}
+
+/**
+ * Calculate the CRC-32 checksum (IEEE 802.3 standard) of a Uint8Array, ArrayBuffer, or string.
+ * @param {Uint8Array|ArrayBuffer|string} input
+ * @returns {string} Lowercase 8-character hexadecimal CRC-32 checksum.
+ */
+function calculateCRC32(input) {
+    let bytes;
+    if (typeof input === "string") {
+        bytes = utf8Encoder.encode(input);
+    } else if (input instanceof ArrayBuffer) {
+        bytes = new Uint8Array(input);
+    } else if (input instanceof Uint8Array) {
+        bytes = input;
+    } else {
+        bytes = new Uint8Array(0);
+    }
+
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) {
+            c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        table[i] = c;
+    }
+
+    let crc = 0 ^ (-1);
+    for (let i = 0; i < bytes.length; i++) {
+        crc = (crc >>> 8) ^ table[(crc ^ bytes[i]) & 0xff];
+    }
+    crc = (crc ^ (-1)) >>> 0;
+    return crc.toString(16).padStart(8, "0").toLowerCase();
+}
+
+/**
+ * Calculate all forensic algorithms (SHA-256, MD5, SHA-1, SHA-512, SHA-384, CRC-32) in parallel.
+ * @param {Uint8Array|ArrayBuffer} dataBytes
+ * @returns {Promise<{sha256: string, md5: string, sha1: string, sha512: string, sha384: string, crc32: string}>}
+ */
+async function calculateMultiHashes(dataBytes) {
+    const [sha256, sha1, sha512, sha384] = await Promise.all([
+        calculateSHA256(dataBytes),
+        calculateDigest("SHA-1", dataBytes),
+        calculateDigest("SHA-512", dataBytes),
+        calculateDigest("SHA-384", dataBytes),
+    ]);
+    const md5 = calculateMD5(dataBytes);
+    const crc32 = calculateCRC32(dataBytes);
+    return { sha256, md5, sha1, sha512, sha384, crc32 };
+}
+
+/**
+ * Convert a hexadecimal string to a Uint8Array byte array.
+ * @param {string} hex
+ * @returns {Uint8Array}
+ */
+function hexToBytes(hex) {
+    const clean = hex.replace(/[^0-9a-fA-F]/g, "");
+    if (clean.length % 2 !== 0) {
+        throw new Error("Hex input must contain an even number of hex characters (byte pairs).");
+    }
+    const bytes = new Uint8Array(clean.length / 2);
+    for (let i = 0; i < clean.length; i += 2) {
+        bytes[i / 2] = parseInt(clean.substring(i, i + 2), 16);
+    }
+    return bytes;
+}
+
 
 // =========================================================================
 // Hash Validation Helpers
@@ -471,7 +703,7 @@ sidebarOverlay.addEventListener("click", () => {
 // Handle hash-based navigation
 function handleHashNavigation() {
     const hash = window.location.hash.replace("#", "");
-    const validPages = ["dashboard", "tests", "upload", "modification", "results", "export"];
+    const validPages = ["dashboard", "tests", "calculator", "upload", "modification", "results", "export"];
     if (validPages.includes(hash)) {
         navigateTo(hash);
     }
@@ -757,6 +989,476 @@ document.getElementById("btnRunSingle").addEventListener("click", async () => {
         btn.innerHTML = "▶ Run Selected";
     }
 });
+
+
+// =========================================================================
+// Hash Calculator Page
+// =========================================================================
+
+const calcState = {
+    mode: "text", // "text" | "file"
+    text: "",
+    encoding: "utf-8",
+    file: null,
+    caseMode: "lower", // "lower" | "upper"
+    hashes: {
+        sha256: "",
+        md5: "",
+        sha1: "",
+        sha512: "",
+        sha384: "",
+        crc32: "",
+    },
+    debounceTimer: null,
+};
+
+// DOM references
+const calcTabBtnText = document.getElementById("calcTabBtnText");
+const calcTabBtnFile = document.getElementById("calcTabBtnFile");
+const calcTextModePanel = document.getElementById("calcTextModePanel");
+const calcFileModePanel = document.getElementById("calcFileModePanel");
+
+const calcTextInput = document.getElementById("calcTextInput");
+const calcEncodingSelect = document.getElementById("calcEncodingSelect");
+
+const calcStatChars = document.getElementById("calcStatChars");
+const calcStatBytes = document.getElementById("calcStatBytes");
+const calcStatLines = document.getElementById("calcStatLines");
+const calcStatStatus = document.getElementById("calcStatStatus");
+
+const calcFileDropZone = document.getElementById("calcFileDropZone");
+const calcFileInput = document.getElementById("calcFileInput");
+const calcFileInfoCard = document.getElementById("calcFileInfoCard");
+const calcFileClearBtn = document.getElementById("calcFileClearBtn");
+
+const calcCaseLower = document.getElementById("calcCaseLower");
+const calcCaseUpper = document.getElementById("calcCaseUpper");
+const calcCopyAllBtn = document.getElementById("calcCopyAllBtn");
+const calcDownloadTxtBtn = document.getElementById("calcDownloadTxtBtn");
+const calcDownloadSha256Btn = document.getElementById("calcDownloadSha256Btn");
+
+const calcVerifyInput = document.getElementById("calcVerifyInput");
+const calcClearVerifyBtn = document.getElementById("calcClearVerifyBtn");
+const calcVerifyFeedback = document.getElementById("calcVerifyFeedback");
+
+/**
+ * Render computed hashes according to active casing (lower or upper).
+ */
+function renderCalcHashes() {
+    const isUpper = calcState.caseMode === "upper";
+    const algos = ["sha256", "md5", "sha1", "sha512", "sha384", "crc32"];
+    algos.forEach((algo) => {
+        const el = document.getElementById(`calcHash-${algo}`);
+        if (!el) return;
+        const raw = calcState.hashes[algo] || "";
+        if (raw) {
+            const formatted = isUpper ? raw.toUpperCase() : raw.toLowerCase();
+            el.textContent = formatted;
+            el.onclick = () => copyToClipboard(formatted);
+        } else {
+            el.textContent = "—";
+            el.onclick = null;
+        }
+    });
+
+    checkCalcVerification();
+}
+
+/**
+ * Check if the verification input matches any computed algorithm.
+ */
+function checkCalcVerification() {
+    if (!calcVerifyInput || !calcVerifyFeedback) return;
+    const rawInput = calcVerifyInput.value.trim();
+    const algos = ["sha256", "md5", "sha1", "sha512", "sha384", "crc32"];
+
+    // Reset visual highlights
+    algos.forEach((algo) => {
+        const card = document.getElementById(`algoCard-${algo}`);
+        const pill = document.getElementById(`algoMatch-${algo}`);
+        if (card) card.classList.remove("match-highlight");
+        if (pill) pill.classList.add("hidden");
+    });
+
+    if (!rawInput) {
+        calcVerifyFeedback.innerHTML = "";
+        return;
+    }
+
+    // Normalize: strip whitespace, colons, dashes
+    const normalizedInput = rawInput.replace(/[:\s-]/g, "").toLowerCase();
+
+    // Check for match
+    let matchedAlgo = null;
+    for (const algo of algos) {
+        const val = (calcState.hashes[algo] || "").toLowerCase();
+        if (val && val === normalizedInput) {
+            matchedAlgo = algo;
+            break;
+        }
+    }
+
+    // Detect format by character length
+    let detectedType = "";
+    if (normalizedInput.length === 64) detectedType = "SHA-256 (64 hex)";
+    else if (normalizedInput.length === 32) detectedType = "MD5 (32 hex)";
+    else if (normalizedInput.length === 40) detectedType = "SHA-1 (40 hex)";
+    else if (normalizedInput.length === 128) detectedType = "SHA-512 (128 hex)";
+    else if (normalizedInput.length === 96) detectedType = "SHA-384 (96 hex)";
+    else if (normalizedInput.length === 8) detectedType = "CRC-32 (8 hex)";
+    else detectedType = `${normalizedInput.length} hex chars`;
+
+    const algoNames = {
+        sha256: "SHA-256",
+        md5: "MD5",
+        sha1: "SHA-1",
+        sha512: "SHA-512",
+        sha384: "SHA-384",
+        crc32: "CRC-32",
+    };
+
+    if (matchedAlgo) {
+        const card = document.getElementById(`algoCard-${matchedAlgo}`);
+        const pill = document.getElementById(`algoMatch-${matchedAlgo}`);
+        if (card) card.classList.add("match-highlight");
+        if (pill) pill.classList.remove("hidden");
+
+        calcVerifyFeedback.innerHTML = `
+            <div class="info-box" style="border-left: 4px solid var(--success-green); background: rgba(16, 185, 129, 0.1); margin-bottom: 0;">
+                <span class="text-green" style="font-weight: 700; font-size: 0.95rem;">✅ VERIFICATION MATCH!</span>
+                <br>
+                The provided hash matches the computed <strong>${algoNames[matchedAlgo]}</strong> hash identically (case-insensitive).
+                <br>
+                <span class="text-muted" style="font-size: 0.78rem;">Detected Format: ${escapeHTML(detectedType)}</span>
+            </div>
+        `;
+    } else {
+        calcVerifyFeedback.innerHTML = `
+            <div class="info-box" style="border-left: 4px solid var(--fail-red); background: rgba(239, 68, 68, 0.1); margin-bottom: 0;">
+                <span class="text-red" style="font-weight: 700; font-size: 0.95rem;">❌ NO MATCH</span>
+                <br>
+                The provided hash does not match any currently calculated algorithm for this input.
+                <br>
+                <span class="text-muted" style="font-size: 0.78rem;">Detected Format: ${escapeHTML(detectedType)}</span>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Execute real-time hashing on the text input.
+ */
+async function executeTextHashing() {
+    if (calcState.mode !== "text" || !calcTextInput) return;
+    const text = calcTextInput.value;
+    const encoding = calcEncodingSelect ? calcEncodingSelect.value : "utf-8";
+
+    // Update stats
+    const charCount = text.length;
+    const lineCount = text ? text.split("\n").length : 0;
+    if (calcStatChars) calcStatChars.textContent = charCount.toLocaleString();
+    if (calcStatLines) calcStatLines.textContent = lineCount.toLocaleString();
+
+    let bytes;
+    try {
+        if (encoding === "hex") {
+            bytes = hexToBytes(text);
+        } else if (encoding === "ascii") {
+            bytes = new Uint8Array(text.split("").map((c) => c.charCodeAt(0) & 0xff));
+        } else {
+            bytes = utf8Encoder.encode(text);
+        }
+        if (calcStatBytes) calcStatBytes.textContent = formatBytes(bytes.byteLength);
+        if (calcStatStatus) {
+            calcStatStatus.textContent = "⚡ Live Sync Active";
+            calcStatStatus.className = "calc-stat-val text-green";
+        }
+    } catch (err) {
+        if (calcStatBytes) calcStatBytes.textContent = "Invalid format";
+        if (calcStatStatus) {
+            calcStatStatus.textContent = `⚠️ ${err.message}`;
+            calcStatStatus.className = "calc-stat-val text-red";
+        }
+        return;
+    }
+
+    try {
+        const hashes = await calculateMultiHashes(bytes);
+        calcState.hashes = hashes;
+        renderCalcHashes();
+    } catch (err) {
+        if (calcStatStatus) {
+            calcStatStatus.textContent = `Error: ${err.message}`;
+            calcStatStatus.className = "calc-stat-val text-red";
+        }
+    }
+}
+
+/**
+ * Execute hashing on a file.
+ * @param {File} file
+ */
+async function executeFileHashing(file) {
+    if (!file) return;
+    const MAX_SIZE = 500 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+        showToast("File too large. Maximum size is 500 MB.", "error");
+        return;
+    }
+
+    calcState.file = file;
+
+    // Show metadata
+    const fnEl = document.getElementById("calcMetaFilename");
+    const szEl = document.getElementById("calcMetaSize");
+    const tpEl = document.getElementById("calcMetaType");
+    const mdEl = document.getElementById("calcMetaModified");
+
+    if (fnEl) fnEl.textContent = file.name;
+    if (szEl) szEl.textContent = `${formatBytes(file.size)} (${file.size.toLocaleString()} bytes)`;
+    if (tpEl) tpEl.textContent = file.type || "application/octet-stream";
+    if (mdEl) mdEl.textContent = file.lastModified ? new Date(file.lastModified).toLocaleString() : "—";
+
+    if (calcFileInfoCard) calcFileInfoCard.classList.remove("hidden");
+    if (calcFileDropZone) calcFileDropZone.classList.add("hidden");
+
+    const algos = ["sha256", "md5", "sha1", "sha512", "sha384", "crc32"];
+    algos.forEach((algo) => {
+        const el = document.getElementById(`calcHash-${algo}`);
+        if (el) el.textContent = "Calculating…";
+    });
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const hashes = await calculateMultiHashes(arrayBuffer);
+        calcState.hashes = hashes;
+        renderCalcHashes();
+        showToast("File hashes calculated successfully!", "success");
+    } catch (err) {
+        showToast(`Failed to hash file: ${err.message}`, "error");
+        algos.forEach((algo) => {
+            const el = document.getElementById(`calcHash-${algo}`);
+            if (el) el.textContent = `Error: ${err.message}`;
+        });
+    }
+}
+
+/**
+ * Format all hashes into a forensic evidence report string.
+ * @returns {string}
+ */
+function getFormattedHashReport() {
+    const isUpper = calcState.caseMode === "upper";
+    const fmt = (h) => (isUpper ? (h || "").toUpperCase() : (h || "").toLowerCase());
+    const sourceDesc =
+        calcState.mode === "file" && calcState.file
+            ? `File: "${calcState.file.name}" (${formatBytes(calcState.file.size)})`
+            : `Text Input (${calcStatChars ? calcStatChars.textContent : 0} chars, ${
+                  calcStatBytes ? calcStatBytes.textContent : "0 bytes"
+              })`;
+
+    return [
+        "================================================================================",
+        " FORENSICHECK CRYPTOGRAPHIC HASH REPORT",
+        "================================================================================",
+        `Generated:     ${new Date().toISOString()}`,
+        `Input Source:  ${sourceDesc}`,
+        `Hex Casing:    ${isUpper ? "UPPERCASE" : "lowercase"}`,
+        "--------------------------------------------------------------------------------",
+        `SHA-256:       ${fmt(calcState.hashes.sha256)}`,
+        `MD5:           ${fmt(calcState.hashes.md5)}`,
+        `SHA-1:         ${fmt(calcState.hashes.sha1)}`,
+        `SHA-512:       ${fmt(calcState.hashes.sha512)}`,
+        `SHA-384:       ${fmt(calcState.hashes.sha384)}`,
+        `CRC-32:        ${fmt(calcState.hashes.crc32)}`,
+        "--------------------------------------------------------------------------------",
+        "Validated with ForensiCheck · DF-PBL-030 · UPES Dehradun",
+        "================================================================================",
+    ].join("\n");
+}
+
+/**
+ * Initialize all event listeners for the Hash Calculator.
+ */
+function initHashCalculator() {
+    if (!calcTabBtnText || !calcTabBtnFile) return;
+
+    // Sub-tab: Text Mode
+    calcTabBtnText.addEventListener("click", () => {
+        calcTabBtnText.classList.add("active");
+        calcTabBtnFile.classList.remove("active");
+        if (calcTextModePanel) calcTextModePanel.classList.remove("hidden");
+        if (calcFileModePanel) calcFileModePanel.classList.add("hidden");
+        calcState.mode = "text";
+        executeTextHashing();
+    });
+
+    // Sub-tab: File Mode
+    calcTabBtnFile.addEventListener("click", () => {
+        calcTabBtnFile.classList.add("active");
+        calcTabBtnText.classList.remove("active");
+        if (calcFileModePanel) calcFileModePanel.classList.remove("hidden");
+        if (calcTextModePanel) calcTextModePanel.classList.add("hidden");
+        calcState.mode = "file";
+        if (calcState.file) {
+            executeFileHashing(calcState.file);
+        } else {
+            calcState.hashes = { sha256: "", md5: "", sha1: "", sha512: "", sha384: "", crc32: "" };
+            renderCalcHashes();
+        }
+    });
+
+    // Text input live recalculation
+    if (calcTextInput) {
+        calcTextInput.addEventListener("input", () => {
+            clearTimeout(calcState.debounceTimer);
+            calcState.debounceTimer = setTimeout(() => {
+                executeTextHashing();
+            }, 60);
+        });
+    }
+
+    if (calcEncodingSelect) {
+        calcEncodingSelect.addEventListener("change", () => {
+            executeTextHashing();
+        });
+    }
+
+    // Presets
+    const presets = {
+        calcPresetFox: "The quick brown fox jumps over the lazy dog",
+        calcPresetEmpty: "",
+        calcPresetUnicode: "Ünïcödé Tëst: 日本語テスト 🔍🔒\n",
+        calcPresetForensic: "EVIDENCE ID: EXHIBIT-001 | CASE: 2026-DF-030 | ACQUISITION: BIT-STREAM PHYSICAL",
+        calcPresetClear: "",
+    };
+
+    Object.entries(presets).forEach(([btnId, val]) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener("click", () => {
+                if (calcTextInput) {
+                    calcTextInput.value = val;
+                    executeTextHashing();
+                }
+            });
+        }
+    });
+
+    // File Drag and Drop
+    if (calcFileDropZone && calcFileInput) {
+        calcFileDropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            calcFileDropZone.classList.add("drag-over");
+        });
+
+        calcFileDropZone.addEventListener("dragleave", () => {
+            calcFileDropZone.classList.remove("drag-over");
+        });
+
+        calcFileDropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            calcFileDropZone.classList.remove("drag-over");
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                executeFileHashing(files[0]);
+            }
+        });
+
+        calcFileInput.addEventListener("change", () => {
+            if (calcFileInput.files && calcFileInput.files.length > 0) {
+                executeFileHashing(calcFileInput.files[0]);
+            }
+        });
+    }
+
+    // Clear File button
+    if (calcFileClearBtn) {
+        calcFileClearBtn.addEventListener("click", () => {
+            calcState.file = null;
+            if (calcFileInput) calcFileInput.value = "";
+            if (calcFileInfoCard) calcFileInfoCard.classList.add("hidden");
+            if (calcFileDropZone) calcFileDropZone.classList.remove("hidden");
+            calcState.hashes = { sha256: "", md5: "", sha1: "", sha512: "", sha384: "", crc32: "" };
+            renderCalcHashes();
+        });
+    }
+
+    // Hex Casing toggle
+    if (calcCaseLower && calcCaseUpper) {
+        calcCaseLower.addEventListener("click", () => {
+            calcCaseLower.classList.add("active");
+            calcCaseUpper.classList.remove("active");
+            calcState.caseMode = "lower";
+            renderCalcHashes();
+        });
+
+        calcCaseUpper.addEventListener("click", () => {
+            calcCaseUpper.classList.add("active");
+            calcCaseLower.classList.remove("active");
+            calcState.caseMode = "upper";
+            renderCalcHashes();
+        });
+    }
+
+    // Individual Copy Buttons
+    document.querySelectorAll(".btn-copy[data-algo]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const algo = btn.dataset.algo;
+            const raw = calcState.hashes[algo] || "";
+            if (!raw) return;
+            const formatted = calcState.caseMode === "upper" ? raw.toUpperCase() : raw.toLowerCase();
+            copyToClipboard(formatted);
+        });
+    });
+
+    // Copy All Hashes
+    if (calcCopyAllBtn) {
+        calcCopyAllBtn.addEventListener("click", () => {
+            copyToClipboard(getFormattedHashReport());
+        });
+    }
+
+    // Download Text Report
+    if (calcDownloadTxtBtn) {
+        calcDownloadTxtBtn.addEventListener("click", () => {
+            const report = getFormattedHashReport();
+            const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+            downloadFile(report, `hash_report_${timestamp}.txt`, "text/plain");
+            showToast("Hash report downloaded!", "success");
+        });
+    }
+
+    // Download .sha256
+    if (calcDownloadSha256Btn) {
+        calcDownloadSha256Btn.addEventListener("click", () => {
+            const rawSha256 = calcState.hashes.sha256;
+            if (!rawSha256) {
+                showToast("No SHA-256 hash available to export.", "error");
+                return;
+            }
+            const hash = calcState.caseMode === "upper" ? rawSha256.toUpperCase() : rawSha256.toLowerCase();
+            const filename = calcState.mode === "file" && calcState.file ? calcState.file.name : "input.txt";
+            const content = `${hash}  ${filename}\n`;
+            downloadFile(content, `${filename}.sha256`, "text/plain");
+            showToast(".sha256 checksum file downloaded!", "success");
+        });
+    }
+
+    // Verifier input
+    if (calcVerifyInput) {
+        calcVerifyInput.addEventListener("input", checkCalcVerification);
+    }
+    if (calcClearVerifyBtn) {
+        calcClearVerifyBtn.addEventListener("click", () => {
+            if (calcVerifyInput) calcVerifyInput.value = "";
+            checkCalcVerification();
+        });
+    }
+
+    // Initial calculation (default text input)
+    executeTextHashing();
+}
 
 
 // =========================================================================
@@ -1358,5 +2060,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTestResultCards();
     updateResultsPage();
     updateExportPage();
+    initHashCalculator();
     handleHashNavigation();
 });

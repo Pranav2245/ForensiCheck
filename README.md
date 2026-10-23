@@ -23,6 +23,7 @@ are uploaded to any server.
 |---------|-------------|
 | **Dashboard Overview** | Summary cards showing total tests, passed, failed, errors, and pending |
 | **Known-Answer Test Suite** | 7 controlled test cases (ASCII, binary, empty, Unicode, large, tamper, invalid hash) |
+| **Hash Calculator** | Real-time multi-algorithm calculation (MD5, SHA-1, SHA-256, SHA-384, SHA-512, CRC-32) for text and files with auto-detect verification |
 | **File Upload & Hash** | Upload any file to compute its SHA-256 hash with drag-and-drop support |
 | **Hash Comparison** | Compare observed hash against an expected SHA-256 hash |
 | **Modification Detection** | Live demo showing single-character change detection (avalanche effect) |
